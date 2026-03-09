@@ -42,10 +42,23 @@ figma.ui.onmessage = async (message: { type: string; results?: unknown[] }) => {
     }
     try {
       const files: Record<string, Uint8Array> = {};
+      const seen = new Set<string>();
       for (let i = 0; i < results.length; i++) {
         const r = results[i];
         const pageId = r.result?.sidecar?.page?.id;
-        const base = (pageId && String(pageId).replace(/[^\w-]/g, "_").replace(/^_+|_+$/g, "") || null) || "p" + i;
+        const pagePart = (pageId && String(pageId).replace(/[^\w-]/g, "_").replace(/^_+|_+$/g, "") || null) || "p" + i;
+        const layerPart = (r.rootName || "frame")
+          .replace(/[^\w\s-]/g, "")
+          .trim()
+          .replace(/\s+/g, "_")
+          .replace(/^_+|_+$/g, "") || "frame";
+        let base = pagePart + "_" + layerPart;
+        if (seen.has(base)) {
+          let suffix = 1;
+          while (seen.has(base + "_" + suffix)) suffix++;
+          base = base + "_" + suffix;
+        }
+        seen.add(base);
         files[base + ".svg"] = strToU8(r.result.svg);
         files[base + ".json"] = strToU8(JSON.stringify(r.result.sidecar, null, 2));
       }
