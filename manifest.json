@@ -1,0 +1,12 @@
+{
+  "name": "Data-Ready SVG Exporter",
+  "id": "data-ready-svg-exporter-dev",
+  "api": "1.0.0",
+  "main": "dist/code.js",
+  "ui": "dist/ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["none"]
+  },
+  "documentAccess": "dynamic-page"
+}

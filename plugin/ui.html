@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Data-Ready SVG Exporter</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: Inter, system-ui, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+        background: var(--figma-color-bg, #ffffff);
+        color: var(--figma-color-text, #111111);
+      }
+
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      button {
+        border: 0;
+        border-radius: 6px;
+        padding: 10px 14px;
+        background: #0d99ff;
+        color: #ffffff;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #d9d9d9;
+        color: #111111;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .status,
+      .panel {
+        border: 1px solid rgba(128, 128, 128, 0.25);
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .panel {
+        display: grid;
+        gap: 8px;
+      }
+
+      pre {
+        margin: 0;
+        padding: 12px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: rgba(128, 128, 128, 0.08);
+        border-radius: 6px;
+        font-size: 12px;
+      }
+
+      .label {
+        font-size: 12px;
+        text-transform: uppercase;
+        opacity: 0.7;
+      }
+
+      .collapsible .panel-head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .collapsible .panel-head:hover {
+        opacity: 0.9;
+      }
+
+      .collapsible .panel-head .chevron {
+        font-size: 10px;
+        transition: transform 0.15s ease;
+      }
+
+      .collapsible.collapsed .panel-head .chevron {
+        transform: rotate(-90deg);
+      }
+
+      .collapsible .panel-body {
+        overflow: hidden;
+        max-height: 70vh;
+        transition: max-height 0.2s ease;
+      }
+
+      .collapsible.collapsed .panel-body {
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin: 0;
+        border: none;
+      }
+
+      .collapsible.collapsed .panel-body pre {
+        padding: 0;
+      }
+
+      #result-list {
+        display: none;
+        grid-gap: 12px;
+      }
+
+      #result-list.visible {
+        display: grid;
+      }
+
+      #result-list .result-block {
+        align-self: start;
+      }
+
+      .result-block .result-header {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+      }
+
+      .result-block .result-actions {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .result-block .result-actions button {
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+
+      .result-block .result-sections {
+        display: grid;
+        gap: 12px;
+      }
+
+      .status.exporting {
+        opacity: 1;
+        font-weight: 600;
+      }
+
+      .status.exporting::before {
+        content: "";
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 8px;
+        border: 2px solid currentColor;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <button id="run-export">Export Selection</button>
+      <button id="save-zip" class="secondary" disabled>Save (.zip)</button>
+      <button id="close" class="secondary">Close</button>
+    </div>
+
+    <div class="status" id="status">Select one or more page blocks (frames/sections/groups).</div>
+
+    <div class="panel">
+      <div class="label">Diagnostics</div>
+      <pre id="diagnostics">No export run yet.</pre>
+    </div>
+
+    <div id="result-list"></div>
+
+    <script>
+      const runButton = document.getElementById("run-export");
+      const saveZipButton = document.getElementById("save-zip");
+      const closeButton = document.getElementById("close");
+      const status = document.getElementById("status");
+      const diagnostics = document.getElementById("diagnostics");
+      const resultList = document.getElementById("result-list");
+
+      let storedResults = [];
+      let isExporting = false;
+
+      runButton.addEventListener("click", () => {
+        isExporting = true;
+        runButton.disabled = true;
+        status.textContent = "Exporting...";
+        status.classList.add("exporting");
+        parent.postMessage({ pluginMessage: { type: "run-export" } }, "*");
+      });
+
+      closeButton.addEventListener("click", () => {
+        parent.postMessage({ pluginMessage: { type: "close" } }, "*");
+      });
+
+      function copyToClipboard(text) {
+        if (!text) return false;
+        if (typeof navigator.clipboard !== "undefined" && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(function () { return true; }).catch(function () { return fallbackCopy(text); });
+        }
+        return Promise.resolve(fallbackCopy(text));
+      }
+
+      function fallbackCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, text.length);
+        var ok = false;
+        try { ok = document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta);
+        return ok;
+      }
+
+      saveZipButton.addEventListener("click", () => {
+        if (!storedResults.length) {
+          status.textContent = "No export data. Run Export Selection first.";
+          return;
+        }
+        status.textContent = "Creating zip...";
+        parent.postMessage({ pluginMessage: { type: "create-zip", results: storedResults } }, "*");
+      });
+
+      function createResultBlock(rootName, result) {
+        const block = document.createElement("div");
+        block.className = "panel result-block";
+
+        const svgText = result.svg;
+        const jsonText = JSON.stringify(result.sidecar, null, 2);
+
+        const header = document.createElement("div");
+        header.className = "result-header";
+        header.textContent = rootName;
+        block.appendChild(header);
+
+        const actions = document.createElement("div");
+        actions.className = "result-actions";
+        const copySvgBtn = document.createElement("button");
+        copySvgBtn.className = "secondary";
+        copySvgBtn.textContent = "Copy SVG";
+        const copyJsonBtn = document.createElement("button");
+        copyJsonBtn.className = "secondary";
+        copyJsonBtn.textContent = "Copy JSON";
+        copySvgBtn.onclick = function () {
+          copyToClipboard(svgText).then(function (ok) {
+            status.textContent = ok ? "SVG copied." : "Copy failed.";
+          });
+        };
+        copyJsonBtn.onclick = function () {
+          copyToClipboard(jsonText).then(function (ok) {
+            status.textContent = ok ? "JSON copied." : "Copy failed.";
+          });
+        };
+        actions.appendChild(copySvgBtn);
+        actions.appendChild(copyJsonBtn);
+        block.appendChild(actions);
+
+        const sections = document.createElement("div");
+        sections.className = "result-sections";
+
+        function makeCollapsible(labelText, preContent) {
+          const panel = document.createElement("div");
+          panel.className = "panel collapsible collapsed";
+          const head = document.createElement("div");
+          head.className = "panel-head";
+          const chevron = document.createElement("span");
+          chevron.className = "chevron";
+          chevron.textContent = "\u25BC";
+          const label = document.createElement("span");
+          label.className = "label";
+          label.textContent = labelText;
+          head.appendChild(chevron);
+          head.appendChild(label);
+          head.onclick = function () {
+            panel.classList.toggle("collapsed");
+          };
+          const body = document.createElement("div");
+          body.className = "panel-body";
+          const pre = document.createElement("pre");
+          pre.textContent = preContent;
+          body.appendChild(pre);
+          panel.appendChild(head);
+          panel.appendChild(body);
+          return panel;
+        }
+
+        sections.appendChild(makeCollapsible("SVG", svgText));
+        sections.appendChild(makeCollapsible("SIDECAR JSON", jsonText));
+        block.appendChild(sections);
+
+        return block;
+      }
+
+      window.onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message) {
+          return;
+        }
+
+        if (message.type === "selection-state") {
+          if (isExporting) return;
+          const payload = message.payload;
+          const canExport = payload.canExport;
+          status.classList.remove("exporting");
+          runButton.disabled = !canExport;
+          const exportableCount = payload.exportableCount;
+          const exportableNames = payload.exportableNames;
+          if (payload.count === 0) {
+            status.textContent = "Select one or more page blocks (frames/sections/groups).";
+          } else if (exportableCount > 1 && exportableNames) {
+            status.textContent = exportableCount + " exportable: " + exportableNames;
+          } else if (exportableCount === 1) {
+            status.textContent = "Selected: " + (exportableNames || payload.selectedNodeName || "unknown");
+          } else {
+            status.textContent = "No exportable block in selection (choose frames, sections, or groups).";
+          }
+          return;
+        }
+
+        if (message.type === "zip-ready") {
+          var data = message.data;
+          if (data) {
+            var blob = new Blob([data], { type: "application/zip" });
+            var a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "data-ready-svg-export.zip";
+            a.click();
+            URL.revokeObjectURL(a.href);
+            status.textContent = "Saved data-ready-svg-export.zip";
+          }
+          return;
+        }
+
+        if (message.type === "zip-error") {
+          status.textContent = message.message || "Zip creation failed.";
+          return;
+        }
+
+        if (message.type === "export-error") {
+          isExporting = false;
+          status.classList.remove("exporting");
+          runButton.disabled = false;
+          status.textContent = message.payload.message;
+          diagnostics.textContent = message.payload.message;
+          return;
+        }
+
+        if (message.type === "export-result") {
+          isExporting = false;
+          status.classList.remove("exporting");
+          runButton.disabled = false;
+          const results = message.payload.results;
+          if (!results || results.length === 0) {
+            return;
+          }
+          resultList.innerHTML = "";
+          const allDiagnostics = [];
+          for (var i = 0; i < results.length; i++) {
+            var r = results[i];
+            resultList.appendChild(createResultBlock(r.rootName, r.result));
+            if (r.result.diagnostics && r.result.diagnostics.length) {
+              allDiagnostics.push({ root: r.rootName, items: r.result.diagnostics });
+            }
+          }
+          storedResults = results;
+          saveZipButton.disabled = false;
+          status.textContent = "Export complete: " + results.length + " block(s).";
+          diagnostics.textContent = allDiagnostics.length
+            ? JSON.stringify(allDiagnostics, null, 2)
+            : "No diagnostics.";
+          resultList.classList.add("visible");
+        }
+      };
+    </script>
+  </body>
+</html>
