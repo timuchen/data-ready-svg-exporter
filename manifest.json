@@ -1,6 +1,6 @@
 {
   "name": "Data-Ready SVG Exporter",
-  "id": "data-ready-svg-exporter-dev",
+  "id": "1612966729664067273",
   "api": "1.0.0",
   "main": "dist/code.js",
   "ui": "dist/ui.html",
