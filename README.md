@@ -1,5 +1,8 @@
 # Data-Ready SVG Exporter
 
+[![Data-Ready SVG Exporter](assets/logo.jpeg)](https://www.figma.com/community/plugin/1612966729664067273/data-ready-svg-exporter)
+[![Figma](https://img.shields.io/badge/Figma-Community%20Plugin-EA4C89?style=flat-square&logo=figma&logoColor=white)](https://www.figma.com/community/plugin/1612966729664067273/data-ready-svg-exporter)
+
 **Convert Figma blocks to SVG with preserved layer markup for auto-generating documents.**  
 Export page-like nodes into contract-friendly `page.svg` and sidecar `page.json` so downstream pipelines can substitute data into slots and render PDFs.
 
