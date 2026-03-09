@@ -2,3 +2,4 @@
 /node_modules
 /pkg
 /docs
+.DS_Store
