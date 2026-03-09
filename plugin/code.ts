@@ -47,7 +47,8 @@ figma.ui.onmessage = async (message: { type: string; results?: unknown[] }) => {
         const r = results[i];
         const pageId = r.result?.sidecar?.page?.id;
         const pagePart = (pageId && String(pageId).replace(/[^\w-]/g, "_").replace(/^_+|_+$/g, "") || null) || "p" + i;
-        const layerPart = (r.rootName || "frame")
+        const layerName = (r.rootName || "").replace(/^\[p\d+\]\s*/i, "").trim() || "frame";
+        const layerPart = layerName
           .replace(/[^\w\s-]/g, "")
           .trim()
           .replace(/\s+/g, "_")
