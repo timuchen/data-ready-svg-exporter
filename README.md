@@ -1,6 +1,5 @@
 # Data-Ready SVG Exporter
 
-[![Data-Ready SVG Exporter](assets/logo.jpeg)](https://www.figma.com/community/plugin/1612966729664067273/data-ready-svg-exporter)
 [![Figma](https://img.shields.io/badge/Figma-Community%20Plugin-EA4C89?style=flat-square&logo=figma&logoColor=white)](https://www.figma.com/community/plugin/1612966729664067273/data-ready-svg-exporter)
 
 **Convert Figma blocks to SVG with preserved layer markup for auto-generating documents.**  
@@ -43,6 +42,7 @@ This runs `scripts/build.mjs`: bundles `plugin/code.ts`, embeds `plugin/ui.html`
 3. Select `manifest.json` from this repo
 4. Run the plugin from **Plugins** → **Development**
 
+
 ## How it works
 
 1. Select one root node named like `[p1]`, `[p2]` or `[p2] Block_name`
@@ -76,3 +76,11 @@ See `docs/data-ready-svg-exporter-contract.md` and `docs/design-note.md`.
 - `manifest.json` points to `dist/code.js` and `dist/ui.html`
 - No network access
 - Typecheck: `npm run typecheck`
+
+---
+<div align="center">
+  <a href="https://www.figma.com/community/plugin/1612966729664067273/data-ready-svg-exporter">
+    <img src="assets/logo.jpeg" alt="Data-Ready SVG Exporter" width="100">
+  </a>
+  <p>Data-Ready SVG Exporter</p>
+</div>
